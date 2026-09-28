@@ -2,24 +2,30 @@ package com.quizwiz.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 public class QuestionDto {
 
     private Long id;
 
     @NotBlank(message = "Question text cannot be blank")
+    @Size(max = 1000, message = "Question text cannot exceed 1000 characters")
     private String questionText;
 
     @NotBlank(message = "Option A cannot be blank")
+    @Size(max = 255, message = "Option A cannot exceed 255 characters")
     private String optionA;
 
     @NotBlank(message = "Option B cannot be blank")
+    @Size(max = 255, message = "Option B cannot exceed 255 characters")
     private String optionB;
 
     @NotBlank(message = "Option C cannot be blank")
+    @Size(max = 255, message = "Option C cannot exceed 255 characters")
     private String optionC;
 
     @NotBlank(message = "Option D cannot be blank")
+    @Size(max = 255, message = "Option D cannot exceed 255 characters")
     private String optionD;
 
     @NotBlank(message = "Correct option must be A, B, C, or D")

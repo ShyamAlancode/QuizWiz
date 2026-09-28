@@ -56,6 +56,12 @@ public class QuizController {
         return ResponseEntity.ok(attempt);
     }
 
+    // 5b. Get attempt by ID (enables student to resume attempt upon page refresh)
+    @GetMapping("/attempts/{id}")
+    public ResponseEntity<Attempt> getAttemptById(@PathVariable Long id) {
+        return ResponseEntity.ok(quizService.getAttemptById(id));
+    }
+
     // 6. Faculty views class-wise score report for a quiz
     @GetMapping("/reports/quiz/{quizId}")
     public ResponseEntity<List<ScoreReportDto>> getScoreReport(@PathVariable Long quizId) {

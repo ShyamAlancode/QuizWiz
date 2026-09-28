@@ -106,4 +106,17 @@ public class Attempt {
     public void setStatus(String status) {
         this.status = status;
     }
+
+    @Transient
+    public Long getRemainingSeconds() {
+        if (startTime == null || quiz == null || quiz.getTimeLimitMinutes() == null) {
+            return 0L;
+        }
+        if (!"IN_PROGRESS".equals(status)) {
+            return 0L;
+        }
+        long elapsed = java.time.Duration.between(startTime, LocalDateTime.now()).getSeconds();
+        long totalAllowed = quiz.getTimeLimitMinutes() * 60L;
+        return Math.max(0L, totalAllowed - elapsed);
+    }
 }

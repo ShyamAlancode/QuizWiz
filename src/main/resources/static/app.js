@@ -14,6 +14,8 @@ document.addEventListener('DOMContentLoaded', () => {
     loadDashboardStats();
     // Pre-populate one question in faculty form
     addQuestionItem();
+    // Check for in-progress attempt to recover session on page refresh
+    checkForActiveAttempt();
 });
 
 // Role Switcher (Student / Faculty)
@@ -54,6 +56,33 @@ function hideAlert() {
     alertBox.classList.add('d-none');
 }
 
+// Check for active attempt from sessionStorage (recovers session on page refresh)
+async function checkForActiveAttempt() {
+    const savedAttemptId = sessionStorage.getItem('quizwiz_active_attempt_id');
+    if (!savedAttemptId) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/attempts/${savedAttemptId}`);
+        if (!res.ok) {
+            sessionStorage.removeItem('quizwiz_active_attempt_id');
+            return;
+        }
+
+        const attempt = await res.json();
+        if (attempt.status === 'IN_PROGRESS' && attempt.remainingSeconds != null && attempt.remainingSeconds > 0) {
+            activeAttempt = attempt;
+            activeQuiz = attempt.quiz;
+            renderQuizScreen(activeQuiz, attempt.remainingSeconds);
+            showAlert('Resumed active quiz attempt. Your timer has been synchronized with the server.', 'warning');
+        } else {
+            sessionStorage.removeItem('quizwiz_active_attempt_id');
+        }
+    } catch (err) {
+        console.error('Failed to resume attempt:', err);
+        sessionStorage.removeItem('quizwiz_active_attempt_id');
+    }
+}
+
 // Load Quizzes from API
 async function loadQuizzes() {
     try {
@@ -86,12 +115,13 @@ async function loadQuizzes() {
                 <td><strong>${escapeHtml(q.title)}</strong><br><small class="subtitle">${escapeHtml(q.description || '')}</small></td>
                 <td>${q.timeLimitMinutes} mins</td>
                 <td>${q.questions ? q.questions.length : 0}</td>
-                <td>
-                    <button class="btn btn-sm btn-secondary" onclick="viewScoreReport(${q.id}, '${escapeHtml(q.title)}')">
-                        View Report
-                    </button>
-                </td>
+                <td class="action-cell"></td>
             `;
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-sm btn-secondary';
+            btn.textContent = 'View Report';
+            btn.addEventListener('click', () => viewScoreReport(q.id, q.title));
+            tr.querySelector('.action-cell').appendChild(btn);
             tbody.appendChild(tr);
         });
 
@@ -123,12 +153,18 @@ async function handleStartQuiz(e) {
     hideAlert();
 
     const quizId = document.getElementById('student-quiz-select').value;
-    const rollNumber = document.getElementById('student-roll').value.trim();
+    const rawRoll = document.getElementById('student-roll').value;
+    const rollNumber = rawRoll.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
     const name = document.getElementById('student-name').value.trim();
     const email = document.getElementById('student-email').value.trim();
 
     if (!quizId) {
         showAlert('Please select a quiz to start.');
+        return;
+    }
+
+    if (!rollNumber) {
+        showAlert('Please enter a valid alphanumeric roll number.');
         return;
     }
 
@@ -142,15 +178,17 @@ async function handleStartQuiz(e) {
         const data = await res.json();
 
         if (!res.ok) {
-            // Handles duplicate attempt business rule or not found
+            // Handles duplicate attempt business rule or validation errors
             showAlert(data.message || 'Error starting quiz.', 'danger');
             return;
         }
 
         activeAttempt = data;
         activeQuiz = data.quiz;
+        sessionStorage.setItem('quizwiz_active_attempt_id', data.id);
 
-        renderQuizScreen(activeQuiz);
+        const initialSeconds = data.remainingSeconds != null ? data.remainingSeconds : (activeQuiz.timeLimitMinutes * 60);
+        renderQuizScreen(activeQuiz, initialSeconds);
 
     } catch (err) {
         showAlert('Could not start quiz. Server error: ' + err.message);
@@ -158,7 +196,7 @@ async function handleStartQuiz(e) {
 }
 
 // Step 2: Render Active Quiz
-function renderQuizScreen(quiz) {
+function renderQuizScreen(quiz, secondsLeft) {
     document.getElementById('student-start-card').classList.add('d-none');
     document.getElementById('quiz-taking-card').classList.remove('d-none');
 
@@ -195,17 +233,25 @@ function renderQuizScreen(quiz) {
         container.appendChild(qCard);
     });
 
-    startTimer(quiz.timeLimitMinutes);
+    const seconds = (secondsLeft != null && secondsLeft > 0) ? secondsLeft : (quiz.timeLimitMinutes * 60);
+    startTimer(seconds);
 }
 
-// Timer Logic with Auto-submit
-function startTimer(minutes) {
-    let secondsLeft = minutes * 60;
+// Timer Logic with Auto-submit (strictly synchronized with server duration)
+function startTimer(secondsLeft) {
     const timerElem = document.getElementById('time-left');
 
     clearInterval(timerInterval);
 
     const updateTimerDisplay = () => {
+        if (secondsLeft <= 0) {
+            clearInterval(timerInterval);
+            timerElem.textContent = '00:00';
+            showAlert('Time has expired! Your quiz is being auto-submitted...', 'warning');
+            submitQuizAnswers(true);
+            return;
+        }
+
         const mins = Math.floor(secondsLeft / 60);
         const secs = secondsLeft % 60;
         timerElem.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
@@ -213,13 +259,11 @@ function startTimer(minutes) {
         if (secondsLeft <= 30) {
             document.getElementById('timer-display').style.backgroundColor = '#fee2e2';
             document.getElementById('timer-display').style.color = '#991b1b';
+        } else {
+            document.getElementById('timer-display').style.backgroundColor = '';
+            document.getElementById('timer-display').style.color = '';
         }
 
-        if (secondsLeft <= 0) {
-            clearInterval(timerInterval);
-            showAlert('Time has expired! Your quiz is being auto-submitted...', 'warning');
-            submitQuizAnswers(true);
-        }
         secondsLeft--;
     };
 
@@ -262,6 +306,7 @@ async function submitQuizAnswers(isAutoSubmit = false) {
             return;
         }
 
+        sessionStorage.removeItem('quizwiz_active_attempt_id');
         renderResultScreen(result, isAutoSubmit);
 
     } catch (err) {
@@ -298,6 +343,7 @@ function renderResultScreen(attempt, isAutoSubmit) {
 }
 
 function resetStudentPortal() {
+    sessionStorage.removeItem('quizwiz_active_attempt_id');
     document.getElementById('quiz-result-card').classList.add('d-none');
     document.getElementById('quiz-taking-card').classList.add('d-none');
     document.getElementById('student-start-card').classList.remove('d-none');

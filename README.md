@@ -102,9 +102,10 @@ http://localhost:8080
 | `GET` | `/api/quizzes` | Fetch all available quizzes (answers hidden) | 200 OK |
 | `GET` | `/api/quizzes/{id}` | Fetch a single quiz by ID | 200 OK |
 | `POST` | `/api/quizzes` | Faculty creates a new quiz with questions | 201 Created |
-| `POST` | `/api/attempts/start` | Student starts attempt (rejects duplicates with 409) | 201 Created / 409 Conflict |
+| `POST` | `/api/attempts/start` | Student starts attempt (normalizes roll, validates name, rejects duplicates) | 201 Created / 409 Conflict |
 | `POST` | `/api/attempts/submit` | Student submits answers (auto-scores & validates time) | 200 OK |
-| `GET` | `/api/reports/quiz/{quizId}` | Class-wise score report for a specific quiz | 200 OK |
+| `GET` | `/api/attempts/{id}` | Get attempt details with server-computed remaining seconds (session recovery) | 200 OK |
+| `GET` | `/api/reports/quiz/{quizId}` | Class-wise score report (completed attempts, score desc, roll asc) | 200 OK |
 | `GET` | `/api/students` | Get all registered students | 200 OK |
 | `GET` | `/api/dashboard/stats` | Aggregate dashboard statistics | 200 OK |
 
@@ -115,10 +116,16 @@ http://localhost:8080
 When presenting this project for an evaluation:
 1. **Authentication Scope**:
    - The roll number acts as the student's unique identifier for quick classroom quizzes. In production, OAuth2 or Spring Security JWT can be layered on top.
+   - To prevent impersonation, if an existing roll number is used with a different name, the system rejects it with an HTTP 400 error.
 2. **Timer & Auto-Close Logic**:
-   - The frontend timer provides countdown UX, while a Spring `@Scheduled` background worker independently runs every 60 seconds to close abandoned `IN_PROGRESS` attempts whose elapsed minutes exceed the quiz time limit.
+   - The frontend timer is synchronized with the server's start time and duration via `remainingSeconds`.
+   - If a student refreshes their browser during an active attempt, `sessionStorage` and `GET /api/attempts/{id}` seamlessly restore their attempt with the correct remaining time instead of restarting or locking them out.
+   - A Spring `@Scheduled` background worker independently runs every 60 seconds to close abandoned `IN_PROGRESS` attempts whose elapsed minutes exceed the quiz time limit.
    - If an attempt is closed by the scheduler due to abandonment or submitted past the deadline, it receives a score of 0.
-3. **Class Grouping**:
-   - In this MVP, "class-wise" reporting is organized per quiz. Adding a `section` or `batch` column to `Student` is a straightforward extension for multi-section departments.
-4. **Input Integrity**:
+3. **Class Grouping & Score Reports**:
+   - "Class-wise" reporting is organized per quiz. Adding a `section` or `batch` column to `Student` is a straightforward extension for multi-section departments.
+   - Score reports only display completed attempts (excluding premature in-progress 0s) and use student roll number as a secondary tie-breaker.
+4. **Input Integrity & Error Handling**:
+   - Roll numbers are normalized by stripping whitespace and non-alphanumeric characters (e.g. `CS 101` and `CS-101` map to `CS101`).
    - Submissions validate that all question IDs belong strictly to the quiz being attempted and that choices conform to A, B, C, or D.
+   - All standard error cases return structured JSON error payloads with correct HTTP status codes (400 for validation or type mismatch, 404 for unknown endpoints, 405 for unsupported HTTP methods, 409 for duplicate attempts, and sanitized 500 without internal SQL leakage).
