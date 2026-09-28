@@ -23,7 +23,7 @@ public class Quiz {
     @Positive(message = "Time limit must be greater than 0 minutes")
     private Integer timeLimitMinutes;
 
-    @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @JsonManagedReference
     private List<Question> questions = new ArrayList<>();
 

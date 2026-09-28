@@ -80,7 +80,7 @@
       }
     },
     {
-      "name": "5. Student - Duplicate Attempt (Rule Check: Expect 400)",
+      "name": "5. Student - Duplicate Attempt (Rule Check: Expect 409)",
       "request": {
         "method": "POST",
         "header": [

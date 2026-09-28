@@ -10,5 +10,5 @@ import java.util.Optional;
 public interface AttemptRepository extends JpaRepository<Attempt, Long> {
     Optional<Attempt> findByStudentIdAndQuizId(Long studentId, Long quizId);
     List<Attempt> findByQuizIdOrderByScoreDesc(Long quizId);
-    long count();
+    List<Attempt> findByStatus(String status);
 }

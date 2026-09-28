@@ -5,12 +5,14 @@ import com.quizwiz.entity.Attempt;
 import com.quizwiz.entity.Question;
 import com.quizwiz.entity.Quiz;
 import com.quizwiz.entity.Student;
+import com.quizwiz.exception.DuplicateAttemptException;
 import com.quizwiz.exception.QuizException;
 import com.quizwiz.exception.ResourceNotFoundException;
 import com.quizwiz.repository.AttemptRepository;
 import com.quizwiz.repository.QuestionRepository;
 import com.quizwiz.repository.QuizRepository;
 import com.quizwiz.repository.StudentRepository;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -71,7 +73,7 @@ public class QuizService {
     }
 
     // 2. Student starts a quiz attempt
-    // Business Rule Enforced: Prevent a student from attempting the same quiz twice
+    // Business Rule Enforced: Prevent a student from attempting the same quiz twice (409 Conflict)
     public Attempt startAttempt(StartAttemptRequest request) {
         Quiz quiz = getQuizById(request.getQuizId());
 
@@ -91,7 +93,7 @@ public class QuizService {
         // Enforce Rule: Prevent student from attempting the same quiz twice
         Optional<Attempt> existingAttempt = attemptRepository.findByStudentIdAndQuizId(student.getId(), quiz.getId());
         if (existingAttempt.isPresent()) {
-            throw new QuizException("Student with Roll Number " + roll + " has already attempted this quiz! Duplicate attempts are forbidden.");
+            throw new DuplicateAttemptException("Student with Roll Number " + roll + " has already attempted this quiz! Duplicate attempts are forbidden.");
         }
 
         // Create new attempt
@@ -102,7 +104,9 @@ public class QuizService {
     // 3. Student submits attempt & System auto-scores it
     // Business Rules Enforced:
     // - An attempt started must be auto-submitted when the time limit expires.
+    // - Submissions past time limit are not scored (score = 0).
     // - Scores are computed only from questions actually answered.
+    // - Invalid questions or options throw clear exception immediately.
     public Attempt submitAttempt(SubmitAttemptRequest request) {
         Attempt attempt = attemptRepository.findById(request.getAttemptId())
                 .orElseThrow(() -> new ResourceNotFoundException("Attempt not found with id: " + request.getAttemptId()));
@@ -119,17 +123,31 @@ public class QuizService {
         long allowedSeconds = (quiz.getTimeLimitMinutes() * 60L) + 15L; // 15 seconds grace period for network delays
         boolean timeExpired = secondsElapsed > allowedSeconds;
 
-        // Auto-scoring logic
-        // Rule: Scores are computed only from questions actually answered.
-        int score = 0;
         Map<Long, String> answers = request.getAnswers() != null ? request.getAnswers() : Collections.emptyMap();
 
-        for (Question q : quiz.getQuestions()) {
-            String selected = answers.get(q.getId());
-            // Only evaluate if question was actually answered
-            if (selected != null && !selected.trim().isEmpty()) {
-                if (selected.trim().equalsIgnoreCase(q.getCorrectOption().trim())) {
-                    score++;
+        // Validate answer IDs and option values
+        Set<Long> validIds = quiz.getQuestions().stream().map(Question::getId).collect(Collectors.toSet());
+        for (Map.Entry<Long, String> e : answers.entrySet()) {
+            if (!validIds.contains(e.getKey())) {
+                throw new QuizException("Question " + e.getKey() + " does not belong to this quiz");
+            }
+            if (e.getValue() != null && !e.getValue().isBlank() && !e.getValue().trim().matches("(?i)[A-D]")) {
+                throw new QuizException("Answer for question " + e.getKey() + " must be A, B, C or D");
+            }
+        }
+
+        // Auto-scoring logic:
+        // Rule: Submissions past deadline are marked TIME_EXPIRED with score 0.
+        // Otherwise, scores are computed only from questions actually answered.
+        int score = 0;
+        if (!timeExpired) {
+            for (Question q : quiz.getQuestions()) {
+                String selected = answers.get(q.getId());
+                // Only evaluate if question was actually answered
+                if (selected != null && !selected.trim().isEmpty()) {
+                    if (selected.trim().equalsIgnoreCase(q.getCorrectOption().trim())) {
+                        score++;
+                    }
                 }
             }
         }
@@ -141,7 +159,20 @@ public class QuizService {
         return attemptRepository.save(attempt);
     }
 
-    // 4. Faculty views class-wise score report for a quiz
+    // 4. Scheduled Background Job to auto-close abandoned expired attempts
+    @Scheduled(fixedRate = 60000)
+    public void closeExpiredAttempts() {
+        LocalDateTime now = LocalDateTime.now();
+        for (Attempt a : attemptRepository.findByStatus("IN_PROGRESS")) {
+            if (a.getStartTime().plusMinutes(a.getQuiz().getTimeLimitMinutes()).isBefore(now)) {
+                a.setStatus("TIME_EXPIRED");
+                a.setSubmissionTime(now);
+                attemptRepository.save(a);
+            }
+        }
+    }
+
+    // 5. Faculty views class-wise score report for a quiz
     public List<ScoreReportDto> getScoreReportForQuiz(Long quizId) {
         // Ensure quiz exists
         getQuizById(quizId);
@@ -162,12 +193,12 @@ public class QuizService {
                 .collect(Collectors.toList());
     }
 
-    // 5. Get all registered students
+    // 6. Get all registered students
     public List<Student> getAllStudents() {
         return studentRepository.findAll();
     }
 
-    // Dashboard Statistics (Bonus feature)
+    // 7. Dashboard Statistics
     public Map<String, Object> getDashboardStats() {
         Map<String, Object> stats = new HashMap<>();
         stats.put("totalQuizzes", quizRepository.count());

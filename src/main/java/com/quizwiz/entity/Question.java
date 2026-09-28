@@ -1,6 +1,7 @@
 package com.quizwiz.entity;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 
@@ -29,6 +30,7 @@ public class Question {
     private String optionD;
 
     @NotBlank(message = "Correct option is required (A, B, C, or D)")
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String correctOption; // Stores "A", "B", "C", or "D"
 
     @ManyToOne(fetch = FetchType.LAZY)
