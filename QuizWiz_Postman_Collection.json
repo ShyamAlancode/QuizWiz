@@ -1,0 +1,157 @@
+{
+  "info": {
+    "name": "QuizWiz API Collection",
+    "description": "Postman collection for testing QuizWiz Online Quiz System",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Get All Quizzes",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/quizzes",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "quizzes"]
+        }
+      }
+    },
+    {
+      "name": "2. Get Quiz by ID",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/quizzes/1",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "quizzes", "1"]
+        }
+      }
+    },
+    {
+      "name": "3. Faculty - Create Quiz",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Data Structures Quick Quiz\",\n  \"description\": \"Arrays, Stacks, and Queues Basics\",\n  \"timeLimitMinutes\": 5,\n  \"questions\": [\n    {\n      \"questionText\": \"Which data structure operates on LIFO (Last In First Out) principle?\",\n      \"optionA\": \"Queue\",\n      \"optionB\": \"Stack\",\n      \"optionC\": \"Array\",\n      \"optionD\": \"Linked List\",\n      \"correctOption\": \"B\"\n    },\n    {\n      \"questionText\": \"What is the time complexity to access an element by index in an Array?\",\n      \"optionA\": \"O(1)\",\n      \"optionB\": \"O(n)\",\n      \"optionC\": \"O(log n)\",\n      \"optionD\": \"O(n^2)\",\n      \"correctOption\": \"A\"\n    }\n  ]\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/quizzes",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "quizzes"]
+        }
+      }
+    },
+    {
+      "name": "4. Student - Start Quiz Attempt",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"quizId\": 1,\n  \"rollNumber\": \"CS101\",\n  \"name\": \"Rahul Sharma\",\n  \"email\": \"rahul@student.edu\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/attempts/start",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "attempts", "start"]
+        }
+      }
+    },
+    {
+      "name": "5. Student - Duplicate Attempt (Rule Check: Expect 400)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"quizId\": 1,\n  \"rollNumber\": \"CS101\",\n  \"name\": \"Rahul Sharma\",\n  \"email\": \"rahul@student.edu\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/attempts/start",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "attempts", "start"]
+        }
+      }
+    },
+    {
+      "name": "6. Student - Submit Answers (Auto-Score)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"attemptId\": 1,\n  \"answers\": {\n    \"1\": \"B\",\n    \"2\": \"C\",\n    \"3\": \"B\"\n  }\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/attempts/submit",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "attempts", "submit"]
+        }
+      }
+    },
+    {
+      "name": "7. Faculty - Class Score Report",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/reports/quiz/1",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "reports", "quiz", "1"]
+        }
+      }
+    },
+    {
+      "name": "8. Dashboard Statistics",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/dashboard/stats",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "dashboard", "stats"]
+        }
+      }
+    }
+  ]
+}

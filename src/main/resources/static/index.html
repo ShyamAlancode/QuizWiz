@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuizWiz - Simple Online Quiz Conducting System</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <header class="app-header">
+        <div class="container header-container">
+            <div class="logo">
+                <span class="logo-title">QuizWiz</span>
+                <span class="logo-badge">Student and Faculty Portal</span>
+            </div>
+            <nav class="nav-tabs">
+                <button id="tab-student-btn" class="nav-btn active" onclick="switchRole('student')">Student Portal</button>
+                <button id="tab-faculty-btn" class="nav-btn" onclick="switchRole('faculty')">Faculty Portal</button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container main-content">
+
+        <!-- Global Alert Message -->
+        <div id="alert-box" class="alert d-none"></div>
+
+        <!-- ================= STUDENT PORTAL ================= -->
+        <section id="student-section" class="portal-section">
+            
+            <!-- Step 1: Start Quiz Form -->
+            <div id="student-start-card" class="card">
+                <h2>Student Quiz Attempt</h2>
+                <p class="subtitle">Enter your roll number and select an available quiz to begin.</p>
+
+                <form id="start-quiz-form" onsubmit="handleStartQuiz(event)">
+                    <div class="form-group">
+                        <label for="student-roll">Roll Number *</label>
+                        <input type="text" id="student-roll" placeholder="e.g. CS101" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="student-name">Full Name *</label>
+                        <input type="text" id="student-name" placeholder="e.g. Rahul Sharma" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="student-email">Email (Optional)</label>
+                        <input type="email" id="student-email" placeholder="e.g. rahul@example.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="student-quiz-select">Select Quiz *</label>
+                        <select id="student-quiz-select" required>
+                            <option value="">-- Choose an Available Quiz --</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-block">Start Quiz Now</button>
+                </form>
+            </div>
+
+            <!-- Step 2: Active Quiz Taking Area (hidden initially) -->
+            <div id="quiz-taking-card" class="card d-none">
+                <div class="quiz-header">
+                    <div>
+                        <h2 id="active-quiz-title">Quiz Title</h2>
+                        <p id="active-quiz-desc" class="subtitle">Quiz description</p>
+                    </div>
+                    <div class="timer-badge" id="timer-display">
+                        Time Left: <span id="time-left">00:00</span>
+                    </div>
+                </div>
+
+                <form id="quiz-questions-form" onsubmit="handleSubmitQuiz(event)">
+                    <div id="questions-list" class="questions-container">
+                        <!-- Questions dynamically inserted here -->
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-success btn-lg">Submit Quiz</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Step 3: Instant Score Result Card (hidden initially) -->
+            <div id="quiz-result-card" class="card d-none text-center">
+                <h2>Quiz Submission Complete</h2>
+                <p id="result-status-msg" class="subtitle">Your answers were recorded and auto-scored.</p>
+
+                <div class="score-summary">
+                    <div class="score-circle">
+                        <span id="result-score">0</span>
+                        <small>/ <span id="result-total">0</span></small>
+                    </div>
+                    <p class="score-percentage" id="result-percent">0%</p>
+                </div>
+
+                <div class="result-details">
+                    <p><strong>Student:</strong> <span id="result-student-name"></span> (<span id="result-student-roll"></span>)</p>
+                    <p><strong>Submission Status:</strong> <span id="result-status" class="badge"></span></p>
+                </div>
+
+                <button class="btn btn-secondary mt-3" onclick="resetStudentPortal()">Take Another Quiz</button>
+            </div>
+
+        </section>
+
+        <!-- ================= FACULTY PORTAL ================= -->
+        <section id="faculty-section" class="portal-section d-none">
+
+            <!-- Stats Bar -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-num" id="stat-quizzes">0</div>
+                    <div class="stat-label">Total Quizzes</div>
+                </div>
+                <div class="stat-card" style="cursor: pointer;" onclick="viewAllStudents()" title="Click to view all registered students">
+                    <div class="stat-num" id="stat-students">0</div>
+                    <div class="stat-label">Registered Students (Click to view)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-num" id="stat-attempts">0</div>
+                    <div class="stat-label">Total Attempts</div>
+                </div>
+            </div>
+
+            <!-- Create Quiz Card -->
+            <div class="card">
+                <h2>Create New Multiple-Choice Quiz</h2>
+                <p class="subtitle">Specify quiz details, duration limit, and MCQ questions with correct options.</p>
+
+                <form id="create-quiz-form" onsubmit="handleCreateQuiz(event)">
+                    <div class="form-row">
+                        <div class="form-group flex-2">
+                            <label for="quiz-title">Quiz Title *</label>
+                            <input type="text" id="quiz-title" placeholder="e.g. Operating Systems Unit 1" required>
+                        </div>
+                        <div class="form-group flex-1">
+                            <label for="quiz-time">Time Limit (Minutes) *</label>
+                            <input type="number" id="quiz-time" value="5" min="1" max="180" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="quiz-desc">Description</label>
+                        <input type="text" id="quiz-desc" placeholder="e.g. Covers Process Synchronization and Deadlocks">
+                    </div>
+
+                    <!-- Questions Section -->
+                    <div class="questions-builder">
+                        <div class="builder-header">
+                            <h3>Questions & Options</h3>
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="addQuestionItem()">+ Add Another Question</button>
+                        </div>
+
+                        <div id="questions-builder-container">
+                            <!-- Dynamic question form items added here -->
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary mt-3">Save & Publish Quiz</button>
+                </form>
+            </div>
+
+            <!-- Existing Quizzes & Score Reports -->
+            <div class="card mt-4">
+                <h2>Existing Quizzes & Class-wise Score Reports</h2>
+                <p class="subtitle">Click "View Report" on any quiz to view the student score table.</p>
+
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Quiz Title</th>
+                                <th>Time Limit</th>
+                                <th>Questions</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="faculty-quizzes-table-body">
+                            <!-- Injected dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Class Score Report View (hidden until clicked) -->
+                <div id="score-report-modal" class="report-box d-none">
+                    <div class="report-header">
+                        <h3 id="report-quiz-title">Score Report</h3>
+                        <button class="btn btn-sm btn-outline" onclick="closeScoreReport()">Close Report</button>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Roll No</th>
+                                    <th>Student Name</th>
+                                    <th>Email</th>
+                                    <th>Score</th>
+                                    <th>Percentage</th>
+                                    <th>Status</th>
+                                    <th>Submitted At</th>
+                                </tr>
+                            </thead>
+                            <tbody id="score-report-table-body">
+                                <!-- Injected dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- All Registered Students Directory (hidden until clicked) -->
+                <div id="students-modal" class="report-box d-none mt-4">
+                    <div class="report-header">
+                        <h3>Registered Students Directory</h3>
+                        <button class="btn btn-sm btn-outline" onclick="closeStudentsModal()">Close</button>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Roll Number</th>
+                                    <th>Full Name</th>
+                                    <th>Email</th>
+                                </tr>
+                            </thead>
+                            <tbody id="students-table-body">
+                                <!-- Injected dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <footer class="app-footer">
+        <div class="container text-center">
+            <p>QuizWiz - Simple Online Quiz Conducting System | Spring Boot & MySQL</p>
+        </div>
+    </footer>
+
+    <script src="app.js?v=2"></script>
+</body>
+</html>
